@@ -20,18 +20,10 @@ function NewTabEntry({ searchText }: { searchText?: string }) {
 }
 
 function WorkspaceListEntry({ workspace }: { workspace: WorkspaceEntry }) {
-  const shortcutAccessory = workspace.shortcut
-    ? {
-        text: `${workspace.shortcut.modifiers
-          .map((m) => m[0].toUpperCase() + m.slice(1))
-          .join("+")}+${workspace.shortcut.key.toUpperCase()}`,
-      }
-    : { text: "Assign a Shortcut", tooltip: "Shortcuts are necessary to make this feature work" };
-
   return (
     <List.Item
       title={workspace.name}
-      accessories={[{ text: workspace.is_default ? "Default" : "" }, shortcutAccessory]}
+      accessories={workspace.is_default ? [{ text: "Default" }] : []}
       actions={<ZenActions.WorkspaceItem workspace={workspace} />}
       icon={{ source: workspace.icon }}
     />

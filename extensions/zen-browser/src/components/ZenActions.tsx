@@ -1,7 +1,6 @@
-import { Action, ActionPanel, closeMainWindow, getPreferenceValues, Icon, open, popToRoot } from "@raycast/api";
-import { HistoryEntry, Shortcut, WorkspaceEntry } from "../interfaces";
-import { SEARCH_ENGINE } from "../constants";
-import { runShortcut, openNewTab, newTabPowerShellScript, searchPowerShellScript } from "../actions";
+import { Action, ActionPanel, closeMainWindow, Icon, open, popToRoot, showToast, Toast } from "@raycast/api";
+import { HistoryEntry, WorkspaceEntry } from "../interfaces";
+import { openWorkspace, openNewTab, newTabPowerShellScript, newTabTarget, openUrlPowerShellScript } from "../actions";
 import { platform } from "os";
 import { runPowerShellScript } from "@raycast/utils";
 
@@ -17,13 +16,13 @@ function NewTabAction({ query }: { query?: string }) {
       <Action
         title="Open with Zen"
         onAction={async () => {
-          const searchUrlPrefix = SEARCH_ENGINE[getPreferenceValues().searchEngine.toLowerCase()];
-          if (!searchUrlPrefix) {
+          const target = newTabTarget(query);
+          const usesExplicitEngine = target !== (query ?? "");
+          if (!usesExplicitEngine) {
             if (platform() === "win32") {
               await runPowerShellScript(newTabPowerShellScript(query));
             } else {
-              // Raycast's open() rejects bare search terms, so paste the query
-              // into Zen's new-tab address bar and let Zen resolve it.
+              // Raycast's open() rejects bare search terms, so hand the query to Zen itself.
               await openNewTab(query ?? "");
             }
             await popToRoot();
@@ -31,9 +30,9 @@ function NewTabAction({ query }: { query?: string }) {
             return;
           }
           if (platform() === "win32") {
-            await runPowerShellScript(searchPowerShellScript(searchUrlPrefix, query));
+            await runPowerShellScript(openUrlPowerShellScript(target));
           } else {
-            open(`${searchUrlPrefix}${query || ""}`, "zen");
+            open(target, "zen");
           }
         }}
       />
@@ -48,7 +47,7 @@ function HistoryItemAction({ entry: { title, url } }: { entry: HistoryEntry }) {
         title="Open with Zen"
         onAction={async () => {
           if (platform() === "win32") {
-            await runPowerShellScript(`Start-Process "zen" "${url}"`);
+            await runPowerShellScript(openUrlPowerShellScript(url));
           } else {
             open(url, "zen");
           }
@@ -63,7 +62,7 @@ function HistoryItemAction({ entry: { title, url } }: { entry: HistoryEntry }) {
 function WorkspaceItemAction(props: { workspace: WorkspaceEntry }) {
   return (
     <ActionPanel title={props.workspace.name}>
-      {props.workspace.shortcut && <ZenGoToWorkspace workspace={props.workspace} />}
+      <ZenGoToWorkspace workspace={props.workspace} />
       <Action.Open title="Change Shortcut in Keyboard Shortcuts" target={"about:preferences"} application={"Zen"} />
     </ActionPanel>
   );
@@ -75,7 +74,16 @@ function ZenGoToWorkspace(props: { workspace: WorkspaceEntry }) {
       title="Open Workspace"
       icon={Icon.AppWindowSidebarLeft}
       onAction={async () => {
-        await runShortcut(props.workspace.shortcut as Shortcut);
+        try {
+          await openWorkspace(props.workspace);
+        } catch (e) {
+          await showToast({
+            style: Toast.Style.Failure,
+            title: "Could not open workspace",
+            message: e instanceof Error ? e.message : String(e),
+          });
+          return;
+        }
         popToRoot();
         closeMainWindow();
       }}

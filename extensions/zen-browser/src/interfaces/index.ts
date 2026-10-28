@@ -1,4 +1,5 @@
 import { ReactElement } from "react";
+import { AppleScriptModifier } from "../util/applescript";
 
 export interface Preferences {
   readonly searchEngine: string;
@@ -8,7 +9,7 @@ export interface Preferences {
 export interface Shortcut {
   id: string;
   key: string;
-  modifiers: ("control" | "alt" | "shift" | "option" | "command")[];
+  modifiers: AppleScriptModifier[];
 }
 
 export interface Tab {

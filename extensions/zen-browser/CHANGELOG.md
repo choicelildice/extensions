@@ -1,5 +1,19 @@
 # Zen Changelog
 
+## [Open Workspaces Beyond the Tenth] - {PR-MERGE-DATE}
+
+- Search queries are now percent-encoded when an explicit search engine is configured, so `#`, `&` and spaces no longer truncate the URL or inject parameters.
+- Keyboard shortcuts replayed through AppleScript are validated: keys must be a single letter or digit and modifiers must be from the known set. Zen's `accel` modifier now maps to ⌘ (it was `fn`, which System Events rejects), and a trailing space in the **New Tab Shortcut** preference no longer produces an empty key.
+- The `zen-sessions.jsonlz4` decoder verifies the `mozLz40` header, caps the declared size and bounds-checks every read, so a corrupt or truncated session file fails fast instead of hanging or over-allocating.
+- **Install with Homebrew** runs `brew` asynchronously from an absolute path with a timeout instead of blocking the extension with `execSync`.
+- On Windows the profile directory is resolved with `os.homedir()` (`USERPROFILE`) instead of `HOME`, which is usually unset.
+- Removed the unused `@types/sql.js` dev dependency and updated dev dependencies to clear an `npm audit` advisory.
+- The **New Tab** AI tool now asks for confirmation, showing the exact query or URL, before opening a tab. Previously a prompt injection in AI Chat could navigate the browser silently.
+- **New Tab** no longer goes through the clipboard on macOS: the query or URL is passed to Zen's executable as an argument (`--search` / `--new-tab`). On systems where the Zen app cannot be located, the old clipboard-and-paste path is used and the previous clipboard contents are restored afterwards.
+- Fixed SQL injection in **Search History**, **Search Bookmarks** and the search-history AI tool: search terms were spliced into `LIKE '%term%'` unescaped, so a quote broke the query and `%`/`_` acted as wildcards, and the `Limit Results` preferences were interpolated into `LIMIT` unvalidated. Terms are now escaped as SQL literals with wildcards neutralised via `ESCAPE`, and limits must be positive integers (falling back to 50).
+- Fixed a PowerShell command injection on Windows: opening a history entry interpolated the URL into a double-quoted PowerShell string, so a visited URL containing `$(...)` would have been executed when opened from **Search History**. The URL is now passed as a single-quoted literal via `psLiteral`, matching the existing search commands.
+- Fixed the **Open Workspace** command only working for the first ten workspaces. Zen defines switch shortcuts for workspaces 1-10 only, so workspaces 11+ had no "Open Workspace" action and selecting them opened Zen's preferences instead. The command now switches workspaces with Zen's `--space <uuid>` command-line flag (Zen 1.23.3b+, see [zen-browser/desktop#15074](https://github.com/zen-browser/desktop/pull/15074)), which works for any number of workspaces and no longer requires a keyboard shortcut. Space ids are validated as UUIDs before being passed to the Zen process. The Zen process is spawned detached and never awaited, so the command cannot hang or terminate the browser when Zen was not already running. Older Zen versions keep the previous keyboard-shortcut behaviour. The shortcut badge was removed from the workspace list, since only the first ten workspaces could ever show one.
+
 ## [Fix] - 2026-09-19
 
 - Fixed the **New Tab** command always searching with Google regardless of Zen's configured default search engine. Added a **Browser Default** search engine preference (now the default): queries are handed to Zen itself, which resolves them with its own default search engine.
